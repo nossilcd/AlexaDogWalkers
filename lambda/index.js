@@ -55,21 +55,6 @@ const HelpIntentHandler = {
     }
 };
 
-const CancelAndStopIntentHandler = {
-    canHandle(handlerInput) {
-        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
-            && (Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.CancelIntent'
-                || Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.StopIntent');
-    },
-    handle(handlerInput) {
-        const speakOutput = 'Goodbye!';
-
-        return handlerInput.responseBuilder
-            .speak(speakOutput)
-            .getResponse();
-    }
-};
-
 const MakeAppointmentApiHandler = {
     canHandle(handlerInput) {
         return util.isApiRequest(handlerInput, 'MakeAppointment');
@@ -144,6 +129,59 @@ const MakeAppointmentApiHandler = {
         }
     }
 }
+
+/**
+ * slots:
+ *  data - message that will be spoken
+ *  consentCard - '0':no; '1':request email permission;
+ */
+const CustomEndSessionHandler = {
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'CustomEndSession';
+    },
+    handle(handlerInput) {
+        console.log('CUSTOM END SESSION HANDLER', handlerInput.requestEnvelope.request);
+        let speakOutput = 'Goodbye!';
+        let consentCard = false;
+        if (handlerInput.requestEnvelope.request.intent.slots){
+            if (handlerInput.requestEnvelope.request.intent.slots.data){
+                speakOutput = handlerInput.requestEnvelope.request.intent.slots.data.value;
+            }
+            if (handlerInput.requestEnvelope.request.intent.slots.consentCard){
+                consentCard = handlerInput.requestEnvelope.request.intent.slots.consentCard.value;
+            }
+        }
+        if (consentCard === '1'){ //1|0
+            return handlerInput.responseBuilder
+                .speak(speakOutput)
+                .withAskForPermissionsConsentCard(['alexa::profile:email:read']) //CPA
+                //.withLinkAccountCard() //AccLink
+                .withShouldEndSession(true)
+                .getResponse();
+        }else{
+            return handlerInput.responseBuilder
+                .speak(speakOutput)
+                .withShouldEndSession(true)
+                .getResponse();
+        }
+    }
+};
+
+const CancelAndStopIntentHandler = {
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+            && (Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.CancelIntent'
+                || Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.StopIntent');
+    },
+    handle(handlerInput) {
+        const speakOutput = 'Goodbye!';
+
+        return handlerInput.responseBuilder
+            .speak(speakOutput)
+            .getResponse();
+    }
+};
 
 /* *
  * FallbackIntent triggers when a customer says something that doesn’t map to any intents in your skill
@@ -229,6 +267,7 @@ exports.handler = Alexa.SkillBuilders.custom()
         MakeAppointmentApiHandler,
         HelloWorldIntentHandler,
         HelpIntentHandler,
+        CustomEndSessionHandler,
         CancelAndStopIntentHandler,
         FallbackIntentHandler,
         SessionEndedRequestHandler,
